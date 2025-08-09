@@ -121,7 +121,7 @@
         </div>
 
         <div id="main-section" class="section active">
-            <img id="hero-image" class="hero-image" src="Img/image2.png" alt="Герой">
+            <img id="hero-image" class="hero-image" src="img/hero.png" alt="Герой">
         </div>
 
         <div id="shop-section" class="section">
@@ -146,7 +146,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             let score = 0;
             let tapsCount = 0;
-            let startTime = Date.now();
+            let totalPlayTime = 0;
+            let sessionStartTime = Date.now();
             
             const heroImage = document.getElementById('hero-image');
             const counterDisplay = document.getElementById('counter');
@@ -160,36 +161,48 @@
             const mainButton = document.getElementById('main-button');
             const statsButton = document.getElementById('stats-button');
 
-            // Функція для збереження даних
             function saveGame() {
+                const elapsedSessionTime = Date.now() - sessionStartTime;
+                totalPlayTime += elapsedSessionTime;
+                sessionStartTime = Date.now();
+                
                 const gameData = {
                     score: score,
                     tapsCount: tapsCount,
-                    startTime: startTime
+                    totalPlayTime: totalPlayTime
                 };
                 localStorage.setItem('ukrainianClickerGame', JSON.stringify(gameData));
             }
 
-            // Функція для завантаження даних
             function loadGame() {
                 const savedData = localStorage.getItem('ukrainianClickerGame');
                 if (savedData) {
-                    const gameData = JSON.parse(savedData);
-                    score = gameData.score;
-                    tapsCount = gameData.tapsCount;
-                    startTime = gameData.startTime;
-                    
-                    counterDisplay.textContent = score + ' ₴';
+                    try {
+                        const gameData = JSON.parse(savedData);
+                        score = gameData.score;
+                        tapsCount = gameData.tapsCount;
+                        
+                        // Додаткова перевірка, щоб totalPlayTime було числом
+                        totalPlayTime = typeof gameData.totalPlayTime === 'number' ? gameData.totalPlayTime : 0;
+                        
+                        counterDisplay.textContent = score + ' ₴';
+                    } catch (e) {
+                        console.error('Помилка при завантаженні збереження: ', e);
+                        // Якщо дані пошкоджені, починаємо гру з нуля
+                        score = 0;
+                        tapsCount = 0;
+                        totalPlayTime = 0;
+                    }
                 }
             }
 
             loadGame();
 
-            // Функція для оновлення часу
-            let playTimeInterval;
             function updatePlayTime() {
-                const elapsed = Date.now() - startTime;
-                const seconds = Math.floor(elapsed / 1000);
+                const currentSessionTime = Date.now() - sessionStartTime;
+                const totalElapsed = totalPlayTime + currentSessionTime;
+                
+                const seconds = Math.floor(totalElapsed / 1000);
                 const minutes = Math.floor(seconds / 60);
                 const hours = Math.floor(minutes / 60);
 
@@ -201,10 +214,17 @@
                 playTimeDisplay.textContent = formattedTime;
             }
 
-            playTimeInterval = setInterval(updatePlayTime, 1000);
+            setInterval(updatePlayTime, 1000);
             
-            // Зберігаємо гру кожні 10 секунд
             setInterval(saveGame, 10000);
+            
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    saveGame();
+                } else {
+                    sessionStartTime = Date.now();
+                }
+            });
             
             function showSection(sectionToShow) {
                 const sections = [mainSection, shopSection, statsSection];
@@ -218,7 +238,6 @@
                 score++;
                 tapsCount++;
                 counterDisplay.textContent = score + ' ₴';
-                saveGame(); // Зберігаємо гру при кожному кліку
             });
 
             shopButton.addEventListener('click', () => {
